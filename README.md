@@ -1,6 +1,10 @@
 # SonarDepthPlugin
+This plugin enables the ability to visualize sonar depth in real time.
 
-Add description
+ <img src="https://github.com/user-attachments/assets/7d6751ec-58e2-40d7-939f-a00edc1eacdc" alt="Sonar Demo" width="1200">
+
+
+
 
 ## Getting Started
 
