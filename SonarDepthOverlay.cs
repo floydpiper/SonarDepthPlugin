@@ -24,6 +24,7 @@ namespace MissionPlanner.plugins
         private TextBox changeMaxDepth;
         private PointLatLng? lastPlotted = null;
         private Color color;
+        private String sonarInput;
         private double simulatedDepth;
         private bool madeOriginalRouteWhite = false;
         private string lastSonarInput;
@@ -103,6 +104,42 @@ namespace MissionPlanner.plugins
                 // Add sonar depth info to the tab
                 refreshGUI();
             }
+
+            // Wait for user to hit 'Enter' before grabbing new max sonar depth value
+            changeMaxDepth.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    sonarInput = changeMaxDepth.Text;
+                    lastSonarInput = sonarInput;
+
+                    // Update the tick marks on the gradient based on user input and recolors breadcrumbs
+                    int parsed;
+                    float parse;
+                    bool result = int.TryParse(sonarInput, out parsed);
+                    if (result == false)
+                    {
+                        result = float.TryParse(sonarInput, out parse);
+                    }
+                    if (result)
+                    {
+
+                        // ---------------------- USED FOR TESTING ONLY -------------------------- //
+                        //                                                                         //
+                        //sonarView.number = sonarNewValue;                                        //
+                        //sonarView.numberColor = grabColor((float)sonarNewValue);                 //
+                        //                                                                         //
+                        // ---------------------- END TESTING ------------------------------------ //
+
+                        repaintBreadcrumbs(plottedRoutes);
+                        depthBar.Refresh();
+                    }
+                    Host.FDGMapControl.Refresh();
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            };
+
             return true;
         }
 
@@ -138,35 +175,9 @@ namespace MissionPlanner.plugins
 
                 if (sonarView != null)
                 {
-                    var sonarInput = changeMaxDepth.Text; // user input to change max sonar depth
-
                     // Updates the color of the depth value in the quick view tab
                     sonarView.number = sonarDepth;
                     sonarView.numberColor = grabColor((sonarDepth));
-
-                    // Update the tick marks on the gradient based on user input and recolors breadcrumbs
-                    if (sonarInput != lastSonarInput)
-                    {
-                        lastSonarInput = sonarInput;
-                        int parsed;
-                        bool result = int.TryParse(sonarInput, out parsed);
-
-                        if (result)
-                        {
-                            var sonarNewValue = Convert.ToDouble(sonarInput);
-
-                            // ---------------------- USED FOR TESTING ONLY -------------------------- //
-                            //                                                                         //
-                            //sonarView.number = sonarNewValue;                                        //
-                            //sonarView.numberColor = grabColor((float)sonarNewValue);                 //
-                            //                                                                         //
-                            // ---------------------- END TESTING ------------------------------------ //
-
-                            repaintBreadcrumbs(plottedRoutes);
-                            depthBar.Refresh();
-                        }
-                        Host.FDGMapControl.Refresh();
-                    }
 
                     plotBreadcrumbs();
                     Host.FDGMapControl.Refresh();
@@ -215,25 +226,14 @@ namespace MissionPlanner.plugins
             g.TextRenderingHint = TextRenderingHint.AntiAlias;
             g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
 
-            var sonarInput = changeMaxDepth.Text;
-
             // start as default value  of 10m
-            if (sonarInput == "")
+            if (lastSonarInput == null)
             {
-                sonarInput = "10";
+                lastSonarInput = "10";
             }
 
+            var maxDepth = Convert.ToDouble(lastSonarInput);
             int totalTicks = 5;
-            int iter = 0;
-            bool result = int.TryParse(sonarInput, out iter);
-            double maxDepth = 0;
-
-            // If user changed max depth
-            if (result == true)
-            {
-                int sonarNewValue = Convert.ToInt16(sonarInput);
-                maxDepth = sonarNewValue;
-            }
 
             // Define panel dimensions for the ticks
             int panelWidth = panel.Width - 5;
@@ -340,8 +340,6 @@ namespace MissionPlanner.plugins
         public void repaintBreadcrumbs(List<(PointLatLng, PointLatLng, string, float)> plottedRoutes)
         {
             var overlay = Host.FDGMapControl.Overlays.FirstOrDefault(o => o.Id == "routes");
-            // Only in repaintBreadcrumbs()
-
 
             for (int i = 0; i < plottedRoutes.Count; i++)
             {
@@ -376,8 +374,6 @@ namespace MissionPlanner.plugins
                 };
 
                 overlay.Routes.Add(dotRoute);
-
-                Host.FDGMapControl.Refresh();
             }
         }
 
