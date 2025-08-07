@@ -11,8 +11,7 @@ using System.Linq;
 using System.Net;
 using System.Windows.Forms;
 
-
-namespace MissionPlanner.plugins
+namespace MissionPlanner.plugins.SonarDepthOverlay
 {
     internal class SonarDepthPlugin : MissionPlanner.Plugin.Plugin
     {
@@ -29,9 +28,7 @@ namespace MissionPlanner.plugins
         private bool madeOriginalRouteWhite = false;
         private string lastSonarInput;
         private int depthCounter = 0;
-        //Pen tickPen = new Pen(Color.Black, 1);
-        //Font tickFont = new Font("Arial", 8);
-        //Brush textBrush = new SolidBrush(Color.Black);
+
         List<(PointLatLng, PointLatLng, string, float)> plottedRoutes = new List<(PointLatLng, PointLatLng, string, float)>();
 
         public override string Name => "Sonar Depth Overlay";
@@ -80,6 +77,13 @@ namespace MissionPlanner.plugins
                     Dock = DockStyle.Fill,
                     BackColor = Color.White
                 };
+
+                // Prevent flickering 
+                typeof(Panel).InvokeMember("DoubleBuffered",
+                System.Reflection.BindingFlags.SetProperty |
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic,
+                null, depthBar, new object[] { true });
 
                 // Paint color gradient and ticks onto the bar
                 depthBar.Paint += DrawGradient;
@@ -132,7 +136,7 @@ namespace MissionPlanner.plugins
                         // ---------------------- END TESTING ------------------------------------ //
 
                         repaintBreadcrumbs(plottedRoutes);
-                        depthBar.Refresh();
+                        depthBar.Invalidate();
                     }
                     Host.FDGMapControl.Refresh();
                     e.Handled = true;
