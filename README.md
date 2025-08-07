@@ -8,7 +8,7 @@ This plugin enables the ability to visualize sonar depth in real time.
 
 ## Getting Started
 
-Add sentence
+
 
 ### Prerequisites
 
