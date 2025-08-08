@@ -1,7 +1,10 @@
 # SonarDepthPlugin
-This plugin enables the ability to visualize sonar depth in real time.
+This plugin enables the ability to visualize sonar depth in real time. As the rover moves along its path, it will plot a colored breadcrumb that is associated to a specific depth. 
 
- <img src="https://github.com/user-attachments/assets/7d6751ec-58e2-40d7-939f-a00edc1eacdc" alt="Sonar Demo" width="1200">
+
+
+### Adjust max sonar depth and refresh in real time
+ <img src="https://github.com/user-attachments/assets/b0412245-2889-4cf4-96a4-4a62b9114f3e" alt="Sonar Demo" width="1200">
 
 
 
