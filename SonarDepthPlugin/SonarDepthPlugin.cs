@@ -24,6 +24,7 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
         private QuickView sonarView;
         private TrackBar sonarSlider;
         private TextBox changeMaxDepth;
+        private TableLayoutPanel quickPanel;
         private PointLatLng? lastPlotted = null;
         private Color color;
         private string sonarInput;
@@ -31,6 +32,9 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
         private bool madeOriginalRouteWhite = false;
         private string lastSonarInput;
         private int depthCounter = 0;
+        private TableLayoutPanel quick;
+        private bool uiAdded;
+
         // ---------------------- USED FOR BLUEBOAT ONLY -------------------------- //
         //                                                                          //
         // Uncomment below:                                                         //
@@ -40,6 +44,7 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
         //{                                                                         //
         //    Client = { ReceiveTimeout = 1 }                                       //
         //};                                                                        //
+        // Note: will need to create and change port                              //
         //IPAddress ipAddress = IPAddress.Parse("192.168.2.200");                   //
         //                                                                          //
         // ------------------------------ END  ------------------------------------ //
@@ -109,7 +114,9 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
                     TextAlign = HorizontalAlignment.Center,
                     Name = "changeMaxDepth",
                     Dock = DockStyle.Bottom,
-                    Width = 150
+                    Width = 150,
+                    BackColor = System.Drawing.Color.Black,
+                    ForeColor = System.Drawing.Color.White
                 };
                 centerPanel = new QuickView
                 {
@@ -152,7 +159,7 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
                         repaintBreadcrumbs(plottedRoutes);
                         depthBar.Invalidate();
                     }
-                    Host.FDGMapControl.Refresh();
+                    Host.FDGMapControl.Invalidate();
                     e.Handled = true;
                     e.SuppressKeyPress = true;
                 }
@@ -184,12 +191,12 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
             Host.FDGMapControl.BeginInvokeIfRequired(() =>
             {
                 // Re-add sonar depth view as something is overriding it
-                var quickPanel = Host.MainForm.FlightData.Controls.Find("tableLayoutPanelQuick", true).FirstOrDefault() as TableLayoutPanel;
+                //var quickPanel = Host.MainForm.FlightData.Controls.Find("tableLayoutPanelQuick", true).FirstOrDefault() as TableLayoutPanel;
 
-                if (quickPanel != null && sonarView?.Parent != quickPanel)
-                {
-                    refreshGUI();
-                }
+                //if (quickPanel != null && sonarView?.Parent != quickPanel)
+                //{
+                refreshGUI();
+                //}
 
                 if (sonarView != null)
                 {
@@ -197,7 +204,7 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
                     sonarView.number = sonarDepth;
                     sonarView.numberColor = grabColor(sonarDepth);
 
-                    plotBreadcrumbs();
+                    plotBreadcrumbs(sonarDepth);
                     Host.FDGMapControl.Refresh();
                 }
             });
@@ -214,21 +221,44 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
             return true;
         }
 
+        /// <summary>
+        /// Double buffers the table to prevent flickering in the GUI
+        /// </summary>
+        private void EnsureQuick()
+        {
+            if (quick == null || quick.IsDisposed)
+                quick = Host.MainForm.FlightData.Controls
+                    .Find("tableLayoutPanelQuick", true).FirstOrDefault() as TableLayoutPanel;
+
+            if (quick != null)
+            {
+                // double-buffer the table 
+                typeof(TableLayoutPanel).InvokeMember("DoubleBuffered",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.SetProperty,
+                    null, quick, new object[] { true });
+            }
+        }
 
         /// <summary>
         /// Re-adds the GUI elements to the Quick tab.
         /// </summary>
         public void refreshGUI()
         {
-            var quickPanel = Host.MainForm.FlightData.Controls.Find("tableLayoutPanelQuick", true).FirstOrDefault() as TableLayoutPanel;
+            EnsureQuick();
+            if (quick == null || uiAdded) return;
 
-            quickPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 85));
-            quickPanel.Controls.Add(sonarView, 0, quickPanel.RowCount);
-            quickPanel.Controls.Add(centerPanel, 0, quickPanel.RowCount);
-            quickPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 100));
-            quickPanel.Controls.Add(depthBar, 0, quickPanel.RowCount);
-            quickPanel.SetColumnSpan(depthBar, quickPanel.ColumnCount);
-            sonarView.Refresh();
+            // add sonar plugin info to the Quck tab
+            quick.RowStyles.Add(new RowStyle(SizeType.Absolute, 85));
+            quick.Controls.Add(sonarView, 0, quick.RowCount);
+
+            quick.RowStyles.Add(new RowStyle(SizeType.Absolute, 100));
+            quick.Controls.Add(centerPanel, 0, quick.RowCount);
+
+            quick.RowStyles.Add(new RowStyle(SizeType.Absolute, 20));
+            quick.Controls.Add(depthBar, 0, quick.RowCount);
+            quick.SetColumnSpan(depthBar, quick.ColumnCount);
+
+            uiAdded = true;
         }
 
 
@@ -289,20 +319,8 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
         /// <summary>
         /// Plots the breadcrumbs as the rover moves. The color represents an associated depth of the water. 
         /// </summary>
-        public void plotBreadcrumbs()
+        public void plotBreadcrumbs(float sonarDepth)
         {
-            // Grabs the sonar depth from the rover and its associated color
-            //float sonarDepth = 3.0f;
-
-            // ---------------------- CHANGE TO MAKE ROVER WORK ---------------------- //
-            //                                                                         //
-            // Uncomment below:                                                        //
-            float sonarDepth = grabSonarDepth();                                       //
-            //                                                                         //
-            // Will need to comment line 295: float sonarDepth = 3.0f;                 //
-            //                                                                         //
-            // ---------------------- END CHANGE ------------------------------------- //
-
             Color color = grabColor(sonarDepth);
 
             // Grab position of rover
@@ -340,13 +358,11 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
             };
 
             overlay.Routes.Add(dotRoute);
-            Host.FDGMapControl.Refresh();
 
             // Save plotted location of breadcumbs for later
             if (dotRoute != null)
             {
-                float depth = grabSonarDepth();
-                plottedRoutes.Add((current, offset, routeName, depth));
+                plottedRoutes.Add((current, offset, routeName, sonarDepth));
             }
         }
 
@@ -393,6 +409,7 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
 
                 overlay.Routes.Add(dotRoute);
             }
+
         }
 
 
@@ -411,16 +428,13 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
             //        return _lastGoodDepth;                                                                          //
             //                                                                                                        //        
             //    IPEndPoint remote = new IPEndPoint(IPAddress.Any, 0);                                               //
-            //    byte[] bytes = receivingUdpClient.Receive(ref remote); // will respect ReceiveTimeout               //    
-            //                                                                                                        //
-            //    // (Optional) Only accept packets from your BlueBoat sender:                                        //
-            //    // if (!remote.Address.Equals(ipAddress)) return _lastGoodDepth;                                    //
+            //    byte[] bytes = receivingUdpClient.Receive(ref remote);                                              //    
             //                                                                                                        //
             //    string s = Encoding.ASCII.GetString(bytes).Trim();                                                  //
             //    string[] parts = s.Split(',');                                                                      //
             //    if (parts.Length < 3) return _lastGoodDepth;                                                        //
             //                                                                                                        //
-            //    // Robust parse (handles "." regardless of PC locale)                                               //
+            //                                                                                                        //                                              
             //    if (float.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var depth))      //
             //    {                                                                                                   //
             //        _lastGoodDepth = depth;                                                                         //
@@ -431,7 +445,7 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
             //}                                                                                                       //
             //catch (SocketException ex) when (ex.SocketErrorCode == SocketError.TimedOut)                            //
             //{                                                                                                       //
-            //    // Timeout — just keep using the last value                                                         //
+            //                                                                                                        //
             //    return _lastGoodDepth;                                                                              //
             //}                                                                                                       //    
             //catch                                                                                                   //
@@ -464,7 +478,7 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
 
                 int midX = rect.X + rect.Width / 2;
 
-                // First half: LightSalmon -> Blue
+                // LightSalmon -> Blue
                 using (var brush1 = new LinearGradientBrush(
                     new Rectangle(rect.X, rect.Y, rect.Width / 2, rect.Height),
                     Color.FromArgb(255, 253, 255, 139),
@@ -474,7 +488,7 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
                     e.Graphics.FillRectangle(brush1, new Rectangle(rect.X, rect.Y, rect.Width / 2, rect.Height));
                 }
 
-                // Second half: Blue -> Purple
+                // Blue -> Purple
                 using (var brush2 = new LinearGradientBrush(
                     new Rectangle(midX, rect.Y, rect.Width / 2, rect.Height),
                     Color.LightSalmon,
@@ -503,7 +517,6 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
             int b = 0;
 
             var lastSonarInput = changeMaxDepth.Text;
-            int iter = 0;
 
             if (lastSonarInput == "")
             {
