@@ -32,6 +32,9 @@ To add the plugin to Mission Planner, download SonarDepthPlugin.cs and place it 
 ```
 Once added, the plugin will be available when utilizing Mission Planner. 
 
+## Current limitations / Future work
+Some of the values in the GUI inside of the *Quick* tab tend to flicker when connected to the rover. In my latest update, I have addressed the issue and nearly resolved the error. A slight flicker still persists, but no data is lost visually as was previously. 
+
 ## Authors
 
 * **Piper Floyd** 
