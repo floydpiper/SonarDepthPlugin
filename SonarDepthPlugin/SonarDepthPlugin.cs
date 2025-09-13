@@ -238,7 +238,7 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
                     null, quick, new object[] { true });
             }
         }
-
+        
         /// <summary>
         /// Re-adds the GUI elements to the Quick tab.
         /// </summary>
@@ -409,7 +409,7 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
 
                 overlay.Routes.Add(dotRoute);
             }
-
+           
         }
 
 
@@ -455,7 +455,7 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
             //                                                                                                        //                                                                          
             // ------------------------------------------------ END  ------------------------------------------------ //
             try
-            {
+            { 
                 return MainV2.comPort.MAV.cs.sonarrange;
             }
             catch
@@ -529,6 +529,13 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
                 return Color.FromArgb(r, g, b); // Breadcrumb set to black if out of bounds
             }
 
+
+            // No color shown if depth = 0
+            if (sonardepth <= 0)
+            {
+                return Color.Transparent;
+            }
+
             //Color gradient interpolation
             //c = a + (b - a) * t
             float t = (float)(sonardepth / maxDepth);
@@ -539,6 +546,8 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
                 r = (int)(start.R + (middle.R - start.R) * localT);
                 g = (int)(start.G + (middle.G - start.G) * localT);
                 b = (int)(start.B + (middle.B - start.B) * localT);
+
+                return Color.FromArgb(r, g, b);
             }
             else
             {
@@ -547,9 +556,9 @@ namespace MissionPlanner.plugins.SonarDepthOverlay
                 r = (int)(middle.R + (end.R - middle.R) * localT);
                 g = (int)(middle.G + (end.G - middle.G) * localT);
                 b = (int)(middle.B + (end.B - middle.B) * localT);
-            }
 
-            return Color.FromArgb(r, g, b);
+                return Color.FromArgb(r, g, b);
+            }
         }
     }
 }
